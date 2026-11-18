@@ -218,3 +218,26 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# Dataset archives, extracted images, and generated labels
+/data/
+/datasets/
+*.zip
+*.ppm
+*.pgm
+
+# Training runs and model artifacts
+/runs/
+/weights/
+/artifacts/
+*.pt
+*.onnx
+*.engine
+*.tflite
+
+# Large video and generated inference output
+/videos/*.mp4
+/videos/*.avi
+/videos/*.mov
+/reports/figures/generated/
