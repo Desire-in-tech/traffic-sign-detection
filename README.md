@@ -1,72 +1,80 @@
 # Traffic Sign Detection
 
-YOLO-based traffic sign **object detection** on the German Traffic Sign Detection Benchmark (GTSDB). The project focuses on locating and classifying signs in complete road scenes, including small and visually challenging instances, then measuring the accuracy–latency trade-off for practical inference.
+YOLOv8-based traffic sign **object detection** on the German Traffic Sign Detection Benchmark (GTSDB). This project detects and classifies signs in complete road scenes and evaluates detection quality, inference latency, model export, and prerecorded-video inference.
 
 ## Project status
 
-**Task 8 — foundation in progress.** The repository structure and initial configuration are being established. Training metrics, trained weights, ONNX results, and video demonstrations will be added only after they have been generated and independently checked.
+**Task 8 implementation and notebook work are complete.** The end-to-end workflow, evaluation, export, video inference, and reproducibility reporting are documented in the Task 8 notebook. The notebook and its saved execution outputs are committed on the `task-08/gtsdb-yolov8-foundation` branch.
 
-## Objective
+Large datasets, trained weights, generated runs, and video files are intentionally kept out of Git; they are generated or stored in the Colab/Drive workspace as described in the notebook. The repository includes the reusable annotation utilities, dataset configuration, tests, and environment metadata.
 
-Build an object detector that predicts a bounding box and traffic-sign class for each visible sign in a full-scene image. The project will evaluate both detection quality and inference speed rather than treating accuracy as the only success criterion.
+## Objective and dataset
 
-## Dataset
+The project uses the [German Traffic Sign Detection Benchmark (GTSDB)](https://benchmark.ini.rub.de/gtsdb_dataset.html), which provides 900 full-scene images: 600 training images and 300 official evaluation images. The images are PPM files, and the native annotations are semicolon-delimited bounding-box records.
 
-The primary dataset is the [German Traffic Sign Detection Benchmark (GTSDB)](https://benchmark.ini.rub.de/gtsdb_dataset.html).
+The workflow converts full-scene annotations to YOLO format and uses 43 fine-grained class IDs (0–42). The official 300-image evaluation partition is preserved as the held-out test set. The 600-image training partition is divided into 420 training, 90 validation, and 90 internal test images (70/15/15). Image-level split overlap was checked. Confidence-threshold selection uses validation data, not the held-out test set.
 
-The official benchmark describes 900 full-scene images (600 training and 300 evaluation images). Images are PPM files; signs can be as small as 16 × 16 pixels. Ground-truth annotations are semicolon-separated and contain the image filename, bounding-box coordinates, and class ID.
+## Completed workflow and results
 
-We will inspect the exact archive and its ReadMe.txt before converting labels. In particular, we will distinguish the fine-grained class IDs from the benchmark's broader competition categories. We will not infer class names or annotation columns from a third-party Kaggle mirror.
+- Audited the source images and native annotations, checked bounding-box geometry and class IDs, and handled duplicate records.
+- Converted PPM images and annotations into YOLO-compatible image/label files, including empty label files for negative scenes.
+- Created and validated the dataset configuration and leakage-aware data splits.
+- Reused the trained YOLOv8n checkpoint and evaluated the model.
+- Generated evaluation visualizations, including training curves, confusion matrix, precision–recall curves, and prediction examples.
+- Reviewed confidence thresholds from 0.10 to 0.50 using validation data.
+- Exported the selected checkpoint to ONNX (Opset 12) and ran ONNX structural and CPU inference smoke checks. This is an export/compatibility check, not a claim of ONNX speed-up or measured PyTorch-versus-ONNX prediction parity.
+- Ran inference on a prerecorded road video using OpenCV. The processed demonstration contains 644 frames at 2560×1440 and 30 FPS (about 21.47 seconds). It is prerecorded-video inference, not a physical webcam test.
+- Recorded environment, hardware, split, evaluation, timing, and artifact details in the notebook's reproducibility report.
 
-**Data integrity:** Raw archives, extracted images, generated labels, model weights, and large video files will not be committed to Git. The notebook will document dataset provenance, checksums where practical, the official split, and any additional train/validation split.
+### Evaluation snapshot
 
-## Planned workflow
+| Metric | Validation split | Held-out internal test |
+|---|---:|---:|
+| Precision | 0.498 | 0.563 |
+| Recall | 0.467 | 0.521 |
+| mAP@0.5 | 0.463 | 0.545 |
 
-1. Inspect the exact GTSDB archive and verify its annotation format and class-ID mapping.
-2. Convert full-scene PPM images and bounding boxes into YOLO format, validating image dimensions, class IDs, and box geometry.
-3. Preserve the official evaluation partition as a held-out test set. Split only the official training partition into training and validation subsets; use validation data for model selection and confidence-threshold tuning.
-4. Fine-tune a lightweight pretrained YOLOv8 model in Google Colab. Record the model variant, image size, seed, hardware, training configuration, and dependency versions.
-5. Evaluate precision, recall, mAP@0.5, and mAP@0.5:0.95, including per-class results and attention to small objects.
-6. Benchmark inference FPS with clearly stated hardware, batch size, image size, warm-up, and timing boundaries. Report preprocessing/inference/postprocessing timing separately where possible.
-7. Export the selected model to ONNX and validate that ONNX predictions are consistent with the PyTorch model within a documented tolerance.
-8. Demonstrate confidence-filtered inference on a recorded road-driving video using OpenCV. This substitutes for a physical webcam while still exercising frame-by-frame video inference. It will be described accurately as prerecorded-video inference, not a webcam test.
+The reported single-image benchmark latency is 56.89 ms (17.58 FPS). For the prerecorded-video run, measured model inference throughput was approximately 50.43 FPS, while end-to-end video processing throughput was approximately 12.12 FPS. These are different timing measurements and should not be conflated. Results are specific to the recorded Colab T4 environment and the notebook's settings; they are not a general real-time performance guarantee.
 
-## Repository layout
+## Repository contents
 
-    traffic-sign-detection/
-    ├── configs/
-    │   └── gtsdb.yaml
-    ├── notebooks/
-    │   └── task_08_traffic_sign_detection.ipynb
-    ├── src/
-    │   └── traffic_sign_detection/
-    ├── tests/
-    ├── reports/
-    │   └── figures/
-    ├── videos/
-    ├── requirements.txt
-    ├── pyproject.toml
-    └── README.md
+```
+traffic-sign-detection/
+├── .github/workflows/tests.yml
+├── configs/gtsdb.yaml
+├── notebooks/task_08_traffic_sign_detection.ipynb
+├── src/traffic_sign_detection/
+├── tests/
+├── requirements.txt
+├── pyproject.toml
+└── README.md
+```
 
-The notebook, reusable preprocessing/evaluation/inference code, automated tests, and final report will be added in subsequent reviewed changes.
+## Reproducing the work
 
-## Environment
+The notebook is designed for Google Colab. It records the setup, data preparation, model evaluation, export, video inference, and reproducibility steps. A free GPU is used when available; no paid compute service or physical webcam is required.
 
-The development and training workflow is designed for Google Colab. A free GPU will be used when available; CPU execution remains possible for lightweight checks. No local webcam or paid compute service is required.
+Install the repository dependencies in a compatible Python environment:
 
-Install dependencies in a compatible Python environment:
+```bash
+python -m pip install -r requirements.txt
+```
 
-    python -m pip install -r requirements.txt
+Run the lightweight repository tests with:
 
-## Evaluation and reporting principles
+```bash
+pytest -q
+```
 
-- Keep the held-out test set out of training, model selection, and threshold tuning.
-- Report mAP at both IoU 0.50 and the 0.50:0.95 range.
-- Report precision and recall, and inspect per-class performance because the dataset is small and imbalanced.
-- Measure FPS empirically; never claim real-time performance without recording the hardware and benchmark protocol.
-- Apply a configurable confidence threshold and document how it was selected.
-- Distinguish model inference time from end-to-end video processing throughput.
-- Do not claim ONNX acceleration unless the exported model is actually benchmarked.
+The GitHub Actions workflow runs these tests on pushes to `main` and `task-08/**`, and on pull requests targeting `main`.
+
+## Evaluation and reporting notes
+
+- The held-out test partition is kept separate from training and confidence-threshold selection.
+- Precision, recall, and mAP@0.5 are reported for validation and held-out internal test evaluation.
+- Inference FPS and end-to-end video throughput are reported separately.
+- ONNX export and CPU smoke testing are documented without claiming acceleration.
+- Raw datasets, generated labels, model weights, training runs, and large video files are excluded from Git.
 
 ## References
 
